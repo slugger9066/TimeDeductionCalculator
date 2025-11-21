@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Time Deduction Calculator</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="container">
+    <header class="appHeader">
+      <div class="brand">
+        <svg class="logo" width="56" height="56" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="g1" x1="0" x2="1">
+              <stop offset="0" stop-color="#60a5fa"/>
+              <stop offset="1" stop-color="#3b82f6"/>
+            </linearGradient>
+          </defs>
+          <circle cx="12" cy="12" r="9" stroke="url(#g1)" stroke-width="1.6" fill="rgba(255,255,255,0.02)" />
+          <path d="M12 7v6l4 2" stroke="url(#g1)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="brandText">
+          <h1>Time Deduction Calculator</h1>
+          <p class="tagline">Shrink durations by percentage — fast, accurate, and secure.</p>
+        </div>
+      </div>
+      <div class="headerActions">
+        <button id="helpBtn" class="secondary" aria-label="Help">i</button>
+      </div>
+    </header>
+
+    <form id="calcForm" class="card" autocomplete="off">
+      <div class="prefRow">
+        <div class="rightControls">
+          <button type="button" id="randomBtn" class="secondary">Randomize</button>
+        </div>
+      </div>
+      <fieldset>
+        <legend>Original Duration</legend>
+        <div class="row">
+          <label>Days
+            <div class="numControl">
+              <button type="button" class="dec" data-field="days">−</button>
+              <input type="number" name="days" min="0" step="1" value="0">
+              <button type="button" class="inc" data-field="days">+</button>
+            </div>
+          </label>
+
+          <label>Hours
+            <div class="numControl">
+              <button type="button" class="dec" data-field="hours">−</button>
+              <input type="number" name="hours" min="0" max="23" step="1" value="0">
+              <button type="button" class="inc" data-field="hours">+</button>
+            </div>
+          </label>
+
+          <label>Minutes
+            <div class="numControl">
+              <button type="button" class="dec" data-field="minutes">−</button>
+              <input type="number" name="minutes" min="0" max="59" step="1" value="0">
+              <button type="button" class="inc" data-field="minutes">+</button>
+            </div>
+          </label>
+
+          <label>Seconds
+            <div class="numControl">
+              <button type="button" class="dec" data-field="seconds">−</button>
+              <input type="number" name="seconds" min="0" max="59" step="1" value="0">
+              <button type="button" class="inc" data-field="seconds">+</button>
+            </div>
+          </label>
+        </div>
+
+        <div id="totalPreview" class="muted">Total: <span id="totalSeconds">0</span> seconds</div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Reduction</legend>
+        <label class="full">Percentage
+          <input id="percentage" type="number" name="percentage" min="0" step="0.1" value="280.7" aria-describedby="pctHint">
+        </label>
+        <div class="rangeRow">
+          <input id="pctRange" type="range" min="0" max="2000" step="0.1" value="280.7" aria-label="percentage slider">
+          <output id="pctDisplay">280.7%</output>
+        </div>
+        <div id="pctHint" class="muted">Use the number input or slider. Large percentages are allowed for strong reductions.</div>
+      </fieldset>
+
+      <div class="actions">
+        <button type="submit" id="calcBtn">Calculate</button>
+        <button type="button" id="resetBtn">Reset</button>
+      </div>
+    </form>
+
+    <section id="results" class="card hidden" aria-live="polite">
+      <h2>Results</h2>
+      <div class="resultRow"><strong>Original:</strong> <span id="origText"></span></div>
+      <div class="resultRow"><strong>New Duration:</strong> <span id="newText"></span></div>
+      <div class="resultRow"><strong>Saved Time:</strong> <span id="savedText"></span></div>
+      <div class="resultRow"><strong>Compact:</strong> <span id="compactText"></span></div>
+      <div class="copyRow">
+        <button id="copyHumanBtn">Copy Human</button>
+        <button id="copyCompactBtn">Copy Compact</button>
+      </div>
+    </section>
+
+    <footer class="muted">Built with accessibility and security in mind. No third-party trackers.</footer>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
