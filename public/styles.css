@@ -32,6 +32,17 @@ label input{display:block;margin-top:6px;width:120px;padding:6px;border-radius:6
 .numControl input{width:92px}
 .numControl button{padding:6px 8px;border-radius:6px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);color:inherit;cursor:pointer}
 .numControl button:active{transform:translateY(1px)}
+/* Larger, friendlier inputs */
+label input{padding:10px;font-size:1rem;border-radius:10px}
+input[type="range"]{flex:1}
+
+/* Buttons */
+button{transition:transform .06s ease, box-shadow .12s ease}
+button:hover{transform:translateY(-2px)}
+
+/* Toast */
+.toast{position:fixed;right:16px;bottom:20px;background:rgba(2,6,23,0.9);color:#e6eef8;padding:10px 14px;border-radius:10px;opacity:0;transform:translateY(6px);transition:opacity .18s ease,transform .18s ease}
+.toast.show{opacity:1;transform:translateY(0)}
 
 /* Hide native number input spin buttons (Chrome, Safari, Edge, Opera) */
 input[type="number"]::-webkit-outer-spin-button,
@@ -49,6 +60,13 @@ input[type="number"] {
 output#pctDisplay{min-width:84px;background:rgba(255,255,255,0.03);padding:6px;border-radius:8px;text-align:center}
 .actions{display:flex;gap:10px; margin-top:12px}
 button{background:linear-gradient(180deg,var(--accent),#3b82f6);color:#032; border:0;padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer}
+/* Focus styles for accessibility */
+input:focus, button:focus, select:focus, textarea:focus, input[type="range"]:focus {
+  outline: 3px solid rgba(96,165,250,0.35);
+  outline-offset: 2px;
+}
+
+button:focus { box-shadow: 0 0 0 3px rgba(59,130,246,0.18); }
 button:active{transform:translateY(1px)}
 button.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
 button[aria-pressed="true"]{opacity:0.8}

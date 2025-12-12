@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const pctInput = document.getElementById('percentage');
   const pctRange = document.getElementById('pctRange');
   const pctDisplay = document.getElementById('pctDisplay');
+  const pctError = document.getElementById('pctError');
   const calcBtn = document.getElementById('calcBtn');
   const resetBtn = document.getElementById('resetBtn');
   const results = document.getElementById('results');
@@ -11,14 +12,40 @@ document.addEventListener('DOMContentLoaded', () => {
   const newText = document.getElementById('newText');
   const savedText = document.getElementById('savedText');
   const compactText = document.getElementById('compactText');
-  const copyBtn = document.getElementById('copyBtn');
   const copyHumanBtn = document.getElementById('copyHumanBtn');
   const copyCompactBtn = document.getElementById('copyCompactBtn');
   const randomBtn = document.getElementById('randomBtn');
   const totalSecondsEl = document.getElementById('totalSeconds');
 
-  pctInput.addEventListener('input', () => { pctRange.value = pctInput.value; pctDisplay.value = pctInput.value + '%'; pctDisplay.textContent = pctInput.value + '%'; });
-  pctRange.addEventListener('input', () => { pctInput.value = pctRange.value; pctDisplay.value = pctRange.value + '%'; pctDisplay.textContent = pctRange.value + '%'; });
+  // client-side max to match server default; can be updated to fetch from server
+  const MAX_PERCENTAGE = 10000;
+
+  // debounce helper
+  function debounce(fn, wait){
+    let t = null;
+    return (...args) => {
+      clearTimeout(t);
+      t = setTimeout(()=> fn(...args), wait);
+    };
+  }
+
+  // Toast helper
+  const toastEl = document.getElementById('toast');
+  function showToast(msg, ms = 1500){
+    if (!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.setAttribute('aria-hidden','false');
+    toastEl.classList.add('show');
+    setTimeout(()=>{ toastEl.classList.remove('show'); toastEl.setAttribute('aria-hidden','true'); }, ms);
+  }
+
+  function updatePctDisplay(val){
+    if (!pctDisplay) return;
+    pctDisplay.value = String(val) + '%';
+    pctDisplay.textContent = String(val) + '%';
+  }
+  if (pctInput) pctInput.addEventListener('input', () => { pctRange.value = pctInput.value; updatePctDisplay(pctInput.value); if (pctError) { pctError.style.display = 'none'; pctError.textContent = ''; } });
+  if (pctRange) pctRange.addEventListener('input', () => { pctInput.value = pctRange.value; updatePctDisplay(pctRange.value); if (pctError) { pctError.style.display = 'none'; pctError.textContent = ''; } });
 
   function readDuration() {
     const formData = new FormData(form);
@@ -83,6 +110,33 @@ document.addEventListener('DOMContentLoaded', () => {
     if (totalSecondsEl) totalSecondsEl.textContent = String(total);
   }
 
+  // Live UI update (local compute) — debounced server validation is separate
+  function updateLiveUI(){
+    const duration = readDuration();
+    const pct = Number(pctInput.value) || 0;
+    const local = computeLocal(duration, pct);
+    origText.textContent = humanize(local.original.breakdown) + ` (${local.original.totalSeconds} s)`;
+    newText.textContent = humanize(local.new.breakdown) + ` (${local.new.totalSeconds} s)`;
+    savedText.textContent = humanize(local.saved.breakdown) + ` (${local.saved.totalSeconds} s)`;
+    compactText.textContent = compactFormat(local.new.breakdown);
+    results.classList.remove('hidden');
+    copyHumanBtn.dataset.copy = newText.textContent;
+    copyCompactBtn.dataset.copy = compactText.textContent;
+  }
+
+  const debouncedServerValidate = debounce((duration, pct) => {
+    // call server to validate and update results if necessary
+    calculate({ percentage: pct, duration }).then((data) => {
+      if (!data) return;
+      origText.textContent = humanize(data.original.breakdown) + ` (${data.original.totalSeconds} s)`;
+      newText.textContent = humanize(data.new.breakdown) + ` (${data.new.totalSeconds} s)`;
+      savedText.textContent = humanize(data.saved.breakdown) + ` (${data.saved.totalSeconds} s)`;
+      compactText.textContent = compactFormat(data.new.breakdown);
+      copyHumanBtn.dataset.copy = newText.textContent;
+      copyCompactBtn.dataset.copy = compactText.textContent;
+    }).catch(()=>{});
+  }, 600);
+
   async function calculate(payload) {
     try {
       const resp = await fetch('/api/calc', {
@@ -106,7 +160,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const duration = readDuration();
     const pct = Number(pctInput.value);
     if (!Number.isFinite(pct) || pct < 0) {
-      alert('Please enter a valid non-negative percentage');
+      if (pctError) { pctError.textContent = 'Enter a valid non-negative percentage'; pctError.style.display = 'block'; }
+      return;
+    }
+    if (pct > MAX_PERCENTAGE) {
+      if (pctError) { pctError.textContent = `Maximum percentage is ${MAX_PERCENTAGE}`; pctError.style.display = 'block'; }
       return;
     }
 
@@ -146,8 +204,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   resetBtn.addEventListener('click', () => {
     form.reset();
-    pctInput.value = 280.7;
-    pctRange.value = 280.7;
+    if (pctInput) pctInput.value = 20;
+    if (pctRange) pctRange.value = 20;
     results.classList.add('hidden');
     updateTotalPreview();
   });
@@ -174,8 +232,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // update total preview when inputs change
   Array.from(form.querySelectorAll('input[type="number"]')).forEach(inp => {
-    inp.addEventListener('input', updateTotalPreview);
+    inp.addEventListener('input', () => { updateTotalPreview(); updateLiveUI(); debouncedServerValidate(readDuration(), Number(pctInput.value)); });
   });
+  if (pctInput) pctInput.addEventListener('input', () => { updateLiveUI(); debouncedServerValidate(readDuration(), Number(pctInput.value)); });
 
   // Randomize original duration and percentage
   randomBtn.addEventListener('click', () => {
@@ -193,42 +252,41 @@ document.addEventListener('DOMContentLoaded', () => {
     pctInput.value = rp;
     pctRange.value = rp;
     pctDisplay.textContent = rp + '%';
+    updateLiveUI();
     updateTotalPreview();
   });
 
-  copyHumanBtn.addEventListener('click', async () => {
+  if (copyHumanBtn) copyHumanBtn.addEventListener('click', async () => {
     const text = copyHumanBtn.dataset.copy || newText.textContent || '';
     try {
       await navigator.clipboard.writeText(text);
-      copyHumanBtn.textContent = 'Copied';
-      setTimeout(()=>copyHumanBtn.textContent = 'Copy Human', 1500);
+      showToast('Copied');
     } catch (err) {
       alert('Could not copy to clipboard');
     }
   });
-
-  copyCompactBtn.addEventListener('click', async () => {
+  if (copyCompactBtn) copyCompactBtn.addEventListener('click', async () => {
     const text = copyCompactBtn.dataset.copy || compactText.textContent || '';
     try {
       await navigator.clipboard.writeText(text);
-      copyCompactBtn.textContent = 'Copied';
-      setTimeout(()=>copyCompactBtn.textContent = 'Copy Compact', 1500);
+      showToast('Copied');
     } catch (err) {
       alert('Could not copy to clipboard');
     }
   });
 
-  // preset handling: value format is "days,hours,minutes,seconds"
-  preset.addEventListener('change', () => {
-    const v = preset.value;
-    if (!v) return;
-    const [d,h,m,s] = v.split(',').map(x => Number(x) || 0);
-    form.elements.days.value = d;
-    form.elements.hours.value = h;
-    form.elements.minutes.value = m;
-    form.elements.seconds.value = s;
+  const shareBtn = document.getElementById('shareBtn');
+  if (shareBtn) shareBtn.addEventListener('click', () => {
+    // compact share format: days:hours:minutes:seconds|pct
+    const d = readDuration();
+    const pct = Number(pctInput.value) || 0;
+    const compact = `${d.days}:${d.hours}:${d.minutes}:${d.seconds}|${pct}`;
+    navigator.clipboard.writeText(compact).then(()=> showToast('Share string copied')).catch(()=> alert('Could not copy share string'));
   });
 
-  // initialize pct display
-  if (pctDisplay) { pctDisplay.textContent = pctInput.value + '%'; }
+  // presets removed — keep random and manual inputs
+
+  // initialize pct display and total preview
+  if (pctDisplay && pctInput) updatePctDisplay(pctInput.value);
+  updateTotalPreview();
 });
